@@ -9,6 +9,7 @@ import (
 
 var (
 	testDb = nutz.NewStorage("pocket.db", 0600, nil)
+	cast   = "home"
 
 	duration = time.Millisecond
 	now      = time.Now()
@@ -95,7 +96,7 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestChannel_AddAirTime(t *testing.T) {
-	ch := NewChannel("101", testDb)
+	ch := NewChannel(channelName, cast, testDb)
 	for _, v := range dataSet {
 		air, err := NewAir(v.begin, v.end)
 		if err != nil {
@@ -118,7 +119,7 @@ func TestChannel_AddAirTime(t *testing.T) {
 }
 
 func TestGetChannel(t *testing.T) {
-	ch, err := GetChannel(channelName, testDb)
+	ch, err := GetChannel(channelName, cast, testDb)
 	if err != nil {
 		t.Errorf("getting channel :%v", err)
 	}
@@ -134,7 +135,7 @@ func TestGetChannel(t *testing.T) {
 		t.Errorf("expected nil got %v", curr)
 	}
 
-	ch, err = GetChannel("", testDb)
+	ch, err = GetChannel("", cast, testDb)
 	if err == nil {
 		t.Error("expected an error got nil")
 	}
@@ -145,7 +146,7 @@ func TestGetChannel(t *testing.T) {
 }
 
 func TestChannel_Exists(t *testing.T) {
-	ch, err := GetChannel(channelName, testDb)
+	ch, err := GetChannel(channelName, cast, testDb)
 	if err != nil {
 		t.Errorf("getting channel :%v", err)
 	}

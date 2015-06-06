@@ -46,6 +46,7 @@ type Channel struct {
 	UUID      string          `json:"uuid"`
 	Name      string          `json:"name"`
 	AirTime   map[string]*Air `json:"air_time"`
+	BroadCast string          `json:"broadcast"`
 	timeTable *Scheduler      `jsson:"-"`
 	db        nutz.Storage
 	mutex     sync.RWMutex
@@ -107,11 +108,12 @@ func (a *Air) AddAd(adv *Ad) {
 }
 
 // NewChannel creates a new channel, it assigns a new UUID.
-func NewChannel(name string, store nutz.Storage) *Channel {
+func NewChannel(name, cast string, store nutz.Storage) *Channel {
 	return &Channel{
 		UUID:      uuid.NewV4().String(),
 		Name:      name,
 		AirTime:   make(map[string]*Air),
+		BroadCast: cast,
 		timeTable: NewScheduler(),
 		db:        store,
 	}
@@ -159,12 +161,12 @@ func (c *Channel) CurrentAirTime() (*Air, error) {
 }
 
 // Save persist the channel to bolt database.
-func (c *Channel) Save() error {
+func (c *Channel) Save(nest ...string) error {
 	d, err := json.Marshal(c)
 	if err != nil {
 		return err
 	}
-	return c.db.Create(channelBucket, c.Name, d).Error
+	return c.db.Create(channelBucket, c.Name, d, cast).Error
 }
 
 // loads the airtimes to the scheduler
@@ -179,12 +181,12 @@ func (c *Channel) load() {
 }
 
 // GetChannel retrieves a channel from the database and loads the aitimes.
-func GetChannel(name string, store nutz.Storage) (*Channel, error) {
-	c := store.Get(channelBucket, name)
+func GetChannel(name, cast string, store nutz.Storage) (*Channel, error) {
+	c := store.Get(channelBucket, name, cast)
 	if c.Error != nil {
 		return nil, c.Error
 	}
-	ch := NewChannel(name, store)
+	ch := NewChannel(name, cast, store)
 	err := json.Unmarshal(c.Data, ch)
 	if err != nil {
 		return nil, err
