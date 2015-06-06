@@ -11,7 +11,7 @@ var (
 	testDb = nutz.NewStorage("pocket.db", 0600, nil)
 	cast   = "home"
 
-	duration = time.Millisecond
+	duration = time.Second
 	now      = time.Now()
 	data     = []struct {
 		evt   string
@@ -86,7 +86,7 @@ func TestScheduler(t *testing.T) {
 		}
 		sh.Add(shd)
 	}
-	rst, err := sh.OnAir()
+	rst, err := sh.onAir()
 	if err != nil {
 		t.Errorf("getting current schedule: %v", err)
 	}
@@ -126,15 +126,6 @@ func TestGetChannel(t *testing.T) {
 	if ch.Name != channelName {
 		t.Errorf("expected %s got %s", channelName, ch.Name)
 	}
-
-	curr, err := ch.CurrentAirTime()
-	if err == nil {
-		t.Error("expected error got nil")
-	}
-	if curr != nil {
-		t.Errorf("expected nil got %v", curr)
-	}
-
 	ch, err = GetChannel("", cast, testDb)
 	if err == nil {
 		t.Error("expected an error got nil")

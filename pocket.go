@@ -38,7 +38,9 @@ type Air struct {
 // BroadCast is where the channels of ads are
 type BroadCast struct {
 	UUID     string   `json:"uuid"`
+	Name     string   `json:"name"`
 	Channels []string `json:"channels"`
+	db       nutz.Storage
 }
 
 // Channel is the channel of ads
@@ -132,12 +134,10 @@ func (c *Channel) AddAirTime(a *Air) error {
 		event:    a,
 	})
 	c.mutex.RUnlock()
-	go func() {
-		err := c.Save()
-		if err != nil {
-			panic(err)
-		}
-	}()
+	err := c.Save()
+	if err != nil {
+		panic(err)
+	}
 	return nil
 }
 
@@ -153,7 +153,7 @@ func (c *Channel) Exists(a *Air) bool {
 
 // CurrentAirTime retrieves what is currently on air.
 func (c *Channel) CurrentAirTime() (*Air, error) {
-	s, err := c.timeTable.OnAir()
+	s, err := c.timeTable.onAir()
 	if err != nil {
 		return nil, err
 	}
@@ -161,12 +161,12 @@ func (c *Channel) CurrentAirTime() (*Air, error) {
 }
 
 // Save persist the channel to bolt database.
-func (c *Channel) Save(nest ...string) error {
+func (c *Channel) Save() error {
 	d, err := json.Marshal(c)
 	if err != nil {
 		return err
 	}
-	return c.db.Create(channelBucket, c.Name, d, cast).Error
+	return c.db.Create(channelBucket, c.Name, d, c.BroadCast).Error
 }
 
 // loads the airtimes to the scheduler
@@ -195,6 +195,57 @@ func GetChannel(name, cast string, store nutz.Storage) (*Channel, error) {
 	return ch, nil
 }
 
+// NewBroadcast creates a new broadcast
+func NewBroadcast(name string, store nutz.Storage) *BroadCast {
+	return &BroadCast{
+		UUID: uuid.NewV4().String(),
+		Name: name,
+		db:   store,
+	}
+}
+
+// GetBroadCast retrieves a broadcast
+func GetBroadCast(name string, store nutz.Storage) (*BroadCast, error) {
+	b := store.Get(broadcastBucket, name)
+	if b.Error != nil {
+		return nil, b.Error
+	}
+	cast := &BroadCast{}
+	err := json.Unmarshal(b.Data, cast)
+	if err != nil {
+		return nil, err
+	}
+	return cast, nil
+}
+
+// HasChannel checks where the broadcast has a channel with the ginen name.
+func (b *BroadCast) HasChannel(s string) bool {
+	for _, v := range b.Channels {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+// AddChannel ads a channel to the broadcast
+func (b *BroadCast) AddChannel(ch *Channel) {
+	b.Channels = append(b.Channels, ch.Name)
+	ch.BroadCast = b.Name
+	b.Save()
+	ch.Save()
+}
+
+// Save saves a broadcast
+func (b *BroadCast) Save() error {
+	d, err := json.Marshal(b)
+	if err != nil {
+		return err
+	}
+	c := b.db.Create(broadcastBucket, b.Name, d)
+	return c.Error
+}
+
 // A sorted list of schedules implementation
 func (s schedules) Len() int           { return len(s) }
 func (s schedules) Less(i, j int) bool { return s[i].start.Before(s[j].start) }
@@ -215,8 +266,8 @@ func (s *Scheduler) Add(sh *schedule) {
 	s.mux.RUnlock()
 }
 
-// OnAir returns a current schedule.
-func (s *Scheduler) OnAir() (*schedule, error) {
+// returns a current schedule.
+func (s *Scheduler) onAir() (*schedule, error) {
 	sort.Sort(s.table)
 	return s.table.Now()
 }
