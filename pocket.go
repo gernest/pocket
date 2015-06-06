@@ -15,7 +15,10 @@ const (
 	channelBucket = "channels"
 )
 
-var db = nutz.NewStorage("pocket.db", 0600, nil)
+var (
+	errScheduleNotFound = errors.New("pocket: schedule not found")
+	errAirtimeExists    = errors.New("pocket: airtime already exists")
+)
 
 // Ad is the adevrtisement
 type Ad struct {
@@ -116,7 +119,7 @@ func NewChannel(name string, store nutz.Storage) *Channel {
 // AddAirTime adds a new airtime to the channel
 func (c *Channel) AddAirTime(a *Air) error {
 	if c.Exists(a) {
-		return errors.New("pocket: airtime already exists")
+		return errAirtimeExists
 	}
 	c.mutex.RLock()
 	c.AirTime[a.UUID] = a
@@ -229,11 +232,11 @@ func (s schedules) Now() (*schedule, error) {
 		return false
 	})
 	if i == len(s) {
-		return nil, errors.New("pocket: schedule not found")
+		return nil, errScheduleNotFound
 	}
 	rst := s[i]
 	if rst.start.After(now) {
-		return nil, errors.New("pocket: schedule not found")
+		return nil, errScheduleNotFound
 	}
 	return rst, nil
 }
