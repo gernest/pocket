@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	channelBucket = "channels"
+	channelBucket   = "channels"
+	broadcastBucket = "broadcasts"
 )
 
 var (
@@ -36,8 +37,8 @@ type Air struct {
 
 // BroadCast is where the channels of ads are
 type BroadCast struct {
-	UUID     string     `json:"uuid"`
-	Channels []*Channel `json:"channels"`
+	UUID     string   `json:"uuid"`
+	Channels []string `json:"channels"`
 }
 
 // Channel is the channel of ads
